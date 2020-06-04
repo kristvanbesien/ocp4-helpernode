@@ -1,0 +1,52 @@
+- name: Create the virtual hosts
+  hosts: all
+
+  tasks:
+  - name: Obtain SSO token with using username/password credentials
+    ovirt_auth:
+      url: https://ov.wl.kri.st/ovirt-engine/api
+      username: admin@internal
+      insecure: true
+      password: "B1ackb0x"
+
+      
+  - name: create the VMs
+    ovirt_vm:
+      auth: "{{ ovirt_auth }}"
+      cluster: "Default"
+      state: stopped
+      name: "{{ item.name }}"
+      memory: "{{ item.memory }}"
+      cpu_cores: "{{ item.cores }}"
+      type: server
+      boot_devices:
+        - hd
+        - network
+    loop: "{{ bootstraps + masters + workers }}"
+   
+  - name: Add Disks to VMs
+    ovirt_disk:
+      auth: "{{ ovirt_auth }}"
+      bootable: "yes"
+      name: "disk_{{item.name}}"
+      vm_name: "{{ item.name }}"
+      size: "120 GiB"
+      interface: "virtio"
+      storage_domain: "vmstore"
+      activate: true
+      timeout: 900
+    loop: "{{ bootstraps + masters + workers }}"
+
+  - name: Add NICs to VMs
+    ovirt_nic:
+      auth: "{{ ovirt_auth }}"
+      name: "nic_{{ item.name }}"
+      interface: "virtio"
+      network: "ocpcontrol"
+      profile: "ocpcontrol"
+      mac_address: "{{ item.macaddr | default(omit) }}"
+      vm: "{{ item.name }}" 
+    loop: "{{ bootstraps + masters + workers }}"
+ 
+      
+ oc 
